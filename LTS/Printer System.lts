@@ -1,0 +1,25 @@
+const MAXIMUM_PAPER_COUNT = 2
+range RANGE_OF_PAPER = 0 .. MAXIMUM_PAPER_COUNT
+
+set SHARED_PRINTER_FUNCTIONS = {student.acquire , student.print.paper , student.release, technician.acquire , technician.refill , technician.release }
+set STUDENT_SETS = {first, second}
+
+
+PRINTER_PROCESS (N = MAXIMUM_PAPER_COUNT) = PRINT_ITEM[N],
+PRINT_ITEM[ papercount : RANGE_OF_PAPER ] = ( when( papercount > 0)  student.acquire -> student.print.paper -> student.release -> PRINT_ITEM[ papercount - 1 ] 
+|  when( papercount == 0 ) technician.acquire -> technician.refill -> technician.release ->  PRINT_ITEM[2] | waiting -> WAIT ),  
+WAIT = (waiting -> WAIT ).
+
+
+STUDENT_PROCESS (N = 1) = PRINT_ITEM[N],
+PRINT_ITEM[ doc : 0..N ] = ( when( doc > 0)  student.acquire -> print.doc[doc] -> student.release -> PRINT_ITEM[doc-1] |  when( doc == 0) waiting -> WAIT ) ,  WAIT = (waiting -> WAIT) + SHARED_PRINTER_FUNCTIONS.
+
+
+TECHNICIAN_PROCESS = (technician.acquire -> technician.refill -> technician.release -> TECHNICIAN_PROCESS) + SHARED_PRINTER_FUNCTIONS .
+
+
+|| PRINTING_SYSTEM = (one:STUDENT_PROCESS(2) ||two:STUDENT_PROCESS(1) || nSet:TECHNICIAN_PROCESS || {STUDENT_SETS, nSet}::PRINTER_PROCESS(3) )  / 
+	{ 
+		waiting / { a.waiting, b.waiting, t.waiting}, 
+		a.print.doc[1..2] / {a.student.print.paper} , b.print.doc[1..2] / {b.student.print.paper} 
+	} .
